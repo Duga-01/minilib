@@ -1,41 +1,48 @@
 package iphlpapi
 
+/*
+Для таблицы маршрутизации ожидаемый метод такой:
+Сначала запросить 0.0.0.0/0, чтобы получить исходный маршрут по умолчанию,
+затем добавить маршрут по умолчанию для VPN-сервера,
+после этого при необходимости добавить маршруты VPN.
+Для VPN-маршрута 0.0.0.0/0 можно попробовать меньший показатель метрики (metric), 
+или можно разделить на два маршрута.
+При переподключении можно удалить все не-линейные маршруты интерфейса VPN.
+Формат таблицы маршрутизации:
+Сеть назначения uint32, маска сети (бит) – младшие 6 бит байта,
+шлюз VPN/по умолчанию – старший бит байта
+*/
+
+
 import (
 	"fmt"
 	"net"
 	"unsafe"
 )
 
-/*
-对于路由表，预期的方法是：
-查询 0.0.0.0/0 获得原始默认路由
-然后为 vpn 服务器添加默认路由
-之后就根据需要下发vpn路由完事。
-对于0.0.0.0/0 vpn 路由，可以尝试更低的跃点数，也可以尝试分为2个。
-重新连接时可以删除vpn接口的所有非链路路由表。
-路由表格式：
-目标网络 uint32   掩码位数 byte低6位  vpn/默认网关  byte 高1位
-*/
-
-// 太低的值添加路由时会返回 106 错误
+// При добавлении маршрута с слишком низкой метрикой возвращается ошибка 106
 const routeMetric = 93
 
 type RouteRow struct {
-	ForwardDest      [4]byte //目标网络
-	ForwardMask      [4]byte //掩码
-	ForwardPolicy    uint32  //ForwardPolicy:0x0
-	ForwardNextHop   [4]byte //网关
-	ForwardIfIndex   uint32  // 网卡索引 id
-	ForwardType      uint32  //3 本地接口  4 远端接口
-	ForwardProto     uint32  //3静态路由 2本地接口 5EGP网关
-	ForwardAge       uint32  //存在时间 秒
-	ForwardNextHopAS uint32  //下一跳自治域号码 0
-	ForwardMetric1   uint32  //度量衡(跃点数)，根据 ForwardProto 不同意义不同。
+	ForwardDest      [4]byte 
+	ForwardMask      [4]byte 
+	ForwardPolicy    uint32  
+	ForwardNextHop   [4]byte 
+	ForwardIfIndex   uint32  
+	ForwardType      uint32  
+	ForwardProto     uint32  
+	ForwardAge       uint32  
+	ForwardNextHopAS uint32  
+	ForwardMetric1   uint32 
 	ForwardMetric2   uint32
 	ForwardMetric3   uint32
 	ForwardMetric4   uint32
 	ForwardMetric5   uint32
 }
+
+// ForwardType: 3 – локальный интерфейс, 4 – удалённый интерфейс
+// ForwardProto: 3 – статический маршрут, 2 – локальный интерфейс, 5 – шлюз EGP
+// ForwardMetric1 – метрика (количество прыжков), смысл зависит от ForwardProto
 
 func (rr *RouteRow) GetForwardDest() net.IP {
 	return net.IP(rr.ForwardDest[:])
@@ -74,7 +81,6 @@ func GetRoutes() ([]RouteRow, error) {
 	sr := uintptr(unsafe.Pointer(&buf[0])) + unsafe.Sizeof(num)
 	rowSize := unsafe.Sizeof(RouteRow{})
 
-	// 安全检查
 	if len(buf) < int((unsafe.Sizeof(num) + rowSize*uintptr(num))) {
 		return nil, fmt.Errorf("System error: GetIpForwardTable returns the number is too long, beyond the buffer。")
 	}
