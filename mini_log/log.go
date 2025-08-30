@@ -7,8 +7,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/duga-01/minilib/mini_common"
-	"github.com/duga-01/minilib/syscallw"
+	"github.com/Duga-01/minilib/mini_common"
+	"github.com/Duga-01/minilib/syscallw"
 )
 
 var LogWriter *logWriter
