@@ -1,2 +1,2 @@
 
-Golang base helper library for MiniV2Box
+Base helper library for MiniV2Box
