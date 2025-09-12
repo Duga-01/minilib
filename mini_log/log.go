@@ -50,7 +50,7 @@ func SetupLog(maxSize int, path string) (err error) {
 			}
 			syscallw.Flock(fd, syscallw.LOCK_UN)
 		}
-		if neko_common.RunMode == neko_common.RunMode_NekoBoxForAndroid {
+		if mini_common.RunMode == mini_common.RunMode_MiniV2BoxForAndroid {
 			// redirect stderr
 			syscallw.Dup3(fd, int(os.Stderr.Fd()), 0)
 		}
@@ -63,7 +63,7 @@ func SetupLog(maxSize int, path string) (err error) {
 
 	//
 	LogWriter = &logWriter{}
-	if neko_common.RunMode == neko_common.RunMode_NekoBoxForAndroid {
+	if mini_common.RunMode == mini_common.RunMode_MiniV2BoxForAndroid {
 		LogWriter.writers = []io.Writer{NB4AGuiLogWriter, f}
 	} else {
 		LogWriter.writers = []io.Writer{os.Stdout, f}
